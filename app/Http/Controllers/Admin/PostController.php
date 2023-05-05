@@ -4,12 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 
+use App\Mail\PublishedPostMail;
+
 use App\Models\Post;
 use App\Models\Category;
+use App\Models\Tag;
+use App\Models\User;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class PostController extends Controller
 {
@@ -37,7 +44,8 @@ class PostController extends Controller
     {
         $post = new Post;
         $categories = Category::orderBy('label')->get();
-        return view('admin.posts.form', compact('post', 'categories'));
+        $tags = Tag::orderBy('label')->get();
+        return view('admin.posts.form', compact('post', 'categories', 'tags'));
     }
 
     /**
@@ -48,26 +56,10 @@ class PostController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:100',
-            'text' => 'required|string',
-            'image' => 'nullable|image|mimes:jpg,png,jpeg',
-            'is_published' => 'boolean',
-            'category_id' => 'nullable|exists:categories,id'
-        ],
-        [
-            'title.required' => 'Il titolo è obbligatorio',
-            'title.string' => 'Il titolo deve essere una stringa',
-            'title.max' => 'Il titolo può avere massimo 20 caratteri',
-            'text.required' => 'Il contenuto è obbligatorio',
-            'text.string' => 'Il contenuto deve essere una stringa',
-            'image.image' => 'Il file caricato deve essere un\'immagine',
-            'image.mimes' => 'Le estensioni accettate per l\'immagine sono jpg, png, jpeg',
-            'category_id.exists' => 'L\'id della categoria non è valido',
-        ]);
-
         $data = $request->all();
         
+        $this->validation($data);
+
         if(Arr::exists($data, 'image')) {
            $path = Storage::put('uplodas/posts', $data['image']);
            $data['image'] = $path;
@@ -77,6 +69,12 @@ class PostController extends Controller
         $post->fill($data);
         $post->slug = Post::generateUniqueSlug($post->title);
         $post->save();
+
+        if(Arr::exists($data, "tags")) $post->tags()->attach($data["tags"]);
+
+        if($post->is_published) {
+            $this->sendPublishedMail($post);
+        }
 
         return to_route('admin.posts.show', $post)
             ->with('message_content', "Post $post->id creato con successo");
@@ -102,7 +100,9 @@ class PostController extends Controller
     public function edit(Post $post)
     {
         $categories = Category::orderBy('label')->get();
-        return view('admin.posts.form', compact('post', 'categories'));
+        $tags = Tag::orderBy('label')->get();
+        $post_tags = $post->tags->pluck('id')->toArray();
+        return view('admin.posts.form', compact('post', 'categories', 'tags', 'post_tags'));
     }
 
     /**
@@ -114,23 +114,9 @@ class PostController extends Controller
      */
     public function update(Request $request, Post $post)
     {
-        $request->validate([
-            'title' => 'required|string|max:100',
-            'text' => 'required|string',
-            'image' => 'nullable|image|mimes:jpg,png,jpeg',
-            'is_published' => 'boolean',
-            'category_id' => 'nullable|exists:categories,id'
-        ],
-        [
-            'title.required' => 'Il titolo è obbligatorio',
-            'title.string' => 'Il titolo deve essere una stringa',
-            'title.max' => 'Il titolo può avere massimo 20 caratteri',
-            'text.required' => 'Il contenuto è obbligatorio',
-            'text.string' => 'Il contenuto deve essere una stringa',
-            'image.image' => 'Il file caricato deve essere un\'immagine',
-            'image.mimes' => 'Le estensioni accettate per l\'immagine sono jpg, png, jpeg',
-            'category_id.exists' => 'L\'id della categoria non è valido',
-        ]);
+        $this->validation($request->all());
+
+        $initial_status = $post->is_published;
 
         $data = $request->all();
         $data["slug"] = Post::generateUniqueSlug($data["title"]);
@@ -143,6 +129,15 @@ class PostController extends Controller
         }
         
         $post->update($data);
+
+        if($initial_status != $post->is_published) {
+            $this->sendPublishedMail($post);
+        }
+
+        if(Arr::exists($data, "tags")) 
+            $post->tags()->sync($data["tags"]);
+        else 
+            $post->tags()->detach();
 
         return to_route('admin.posts.show', $post)
             ->with('message_content', "Post $post->id modificato con successo");
@@ -190,11 +185,33 @@ class PostController extends Controller
         $post = Post::where('id', $id)->onlyTrashed()->first();
                 
         if($post->image) Storage::delete($post->image);
+
+        $post->tags()->detach();
+
         $post->forceDelete();
         
         return to_route('admin.posts.trash')
             ->with('message_type', "danger")
             ->with('message_content', "Post $id eliminato definitivamente");
+    }
+
+    /**
+     * Delete the image of the specified resource from storage.
+     *
+     * @param  \App\Models\Post  $post
+     * @return \Illuminate\Http\Response
+     */
+    public function deleteImage(Post $post)
+    {
+        if($post->image) Storage::delete($post->image);
+        $post->image = null;
+        $post->save();
+
+        return redirect()
+            ->back()
+            ->with('message_type', "danger")
+            ->with('message_content', "Immagine eliminata");
+
     }
 
     /**
@@ -210,5 +227,36 @@ class PostController extends Controller
         
         return to_route('admin.posts.index')
             ->with('message_content', "Post $id ripristinato");
+    }
+
+    private function sendPublishedMail(Post $post) {
+        $mail = new PublishedPostMail($post);
+        $user_email = Auth::user()->email;
+        Mail::to($user_email)->send($mail);
+    }
+
+    private function validation($data) {
+        return Validator::make(
+            $data,
+            [
+                'title' => 'required|string|max:100',
+                'text' => 'required|string',
+                'image' => 'nullable|image|mimes:jpg,png,jpeg',
+                'is_published' => 'boolean',
+                'category_id' => 'nullable|exists:categories,id',
+                'tags' => 'nullable|exists:tags,id',
+            ],
+            [
+                'title.required' => 'Il titolo è obbligatorio',
+                'title.string' => 'Il titolo deve essere una stringa',
+                'title.max' => 'Il titolo può avere massimo 20 caratteri',
+                'text.required' => 'Il contenuto è obbligatorio',
+                'text.string' => 'Il contenuto deve essere una stringa',
+                'image.image' => 'Il file caricato deve essere un\'immagine',
+                'image.mimes' => 'Le estensioni accettate per l\'immagine sono jpg, png, jpeg',
+                'category_id.exists' => 'L\'id della categoria non è valido',
+                'tags.exists' => 'I tags selezionati non sono validi',
+            ]
+        )->validate();
     }
 }

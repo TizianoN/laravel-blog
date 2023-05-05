@@ -67,6 +67,32 @@
         </div>
       </div>
 
+      <div class="row mb-3">
+        <div class="col-md-2 text-end">
+          <label class="form-label">Tags</label>
+        </div>
+        <div class="col-md-10">
+
+          <div class="form-check @error('tags') is-invalid @enderror p-0">
+
+            @foreach ($tags as $tag)
+              <input type="checkbox" id="tag-{{ $tag->id }}" value="{{ $tag->id }}" name="tags[]"
+                class="form-check-control" @if (in_array($tag->id, old('tags', $post_tags ?? []))) checked @endif>
+              <label for="tag-{{ $tag->id }}">{{ $tag->label }}</label>
+              <br>
+            @endforeach
+
+
+          </div>
+
+          @error('tags')
+            <div class="invalid-feedback">
+              {{ $message }}
+            </div>
+          @enderror
+        </div>
+      </div>
+
 
       <div class="row mb-3">
         <div class="col-md-2 text-end">
@@ -96,8 +122,16 @@
             </div>
           @enderror
         </div>
-        <div class="col-2">
+        <div class="col-2 position-relative">
           <img src="{{ $post->getImageUri() }}" class="img-fluid" alt="" id="image-preview">
+
+          @if ($post->image)
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+              id="delete-post-image">
+              x
+            </span>
+          @endif
+
         </div>
       </div>
 
@@ -125,11 +159,31 @@
       </div>
       </form>
 
+      @if ($post->image)
+        <form id="delete-post-image-form" method="POST" action="{{ route('admin.posts.delete-image', $post) }}">
+          @method('delete')
+          @csrf
+
+        </form>
+      @endif
     </div>
   </section>
 @endsection
 
 @section('scripts')
+
+  @if ($post->image)
+    <script>
+      const deleteImagebutton = document.getElementById('delete-post-image');
+      const deleteImageForm = document.getElementById('delete-post-image-form');
+
+      deleteImagebutton.addEventListener('click', () => {
+        deleteImageForm.submit();
+      })
+    </script>
+  @endif
+
+
   <script>
     const imageInputEl = document.getElementById('image');
     const imagePreviewEl = document.getElementById('image-preview');

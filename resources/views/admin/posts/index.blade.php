@@ -41,6 +41,9 @@
               Categoria
             </th>
             <th scope="col">
+              Tags
+            </th>
+            <th scope="col">
               <a
                 href="{{ route('admin.posts.index') }}?sort=text&order={{ $sort == 'text' && $order != 'DESC' ? 'DESC' : 'ASC' }}">
                 Abstract
@@ -78,13 +81,24 @@
             <tr>
               <th scope="row">{{ $post->id }}</th>
               <td>{{ $post->title }}</td>
-              <td>{{ $post->category?->label }}</td>
+              <td>{!! $post->category?->getBadgeHTML() !!}</td>
+              <td>
+                @forelse($post->tags as $tag)
+                  {!! $tag->getBadgeHTML() !!}
+                @empty
+                  -
+                @endforelse
+              </td>
               <td>{{ $post->getAbstract(15) }}</td>
               <td>{{ $post->created_at }}</td>
               <td>{{ $post->updated_at }}</td>
               <td>
                 <a href="{{ route('admin.posts.show', $post) }}">
                   <i class="bi bi-eye mx-2"></i>
+                </a>
+
+                <a href="{{ route('admin.post-images.by-post', $post) }}">
+                  <i class="bi bi-card-image"></i>
                 </a>
 
                 <a href="{{ route('admin.posts.edit', $post) }}">
@@ -99,6 +113,11 @@
               </td>
             </tr>
           @empty
+            <tr>
+              <td colspan="8">
+                Nessun risultato
+              </td>
+            </tr>
           @endforelse
         </tbody>
       </table>

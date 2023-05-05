@@ -3,8 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\Post;
-use Illuminate\Support\Str;
+use App\Models\Category;
+
 use Faker\Generator as Faker;
+
+use Illuminate\Support\Str;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -17,12 +20,19 @@ class PostSeeder extends Seeder
      */
     public function run(Faker $faker)
     {
-        for($i = 0; $i < 40; $i++) {
+        $categories = Category::all()->pluck('id')->toArray(); // [1, 2, ...]
+
+        for($i = 0; $i < 100; $i++) {
+            $category_id = (random_int(0, 3) >= 1) ? $faker->randomElement($categories) : null;
+
             $post = new Post;
+            $post->category_id = $category_id;
+            // $post->category_id = 1;
             $post->title = $faker->catchPhrase();
             $post->slug = Str::of($post->title)->slug('-');
-            // $post->image = $faker->imageUrl(640, 480, 'animals', true);
             $post->text = $faker->paragraph(45);
+            $post->is_published = random_int(0, 1);
+            // $post->is_published = 0;
             $post->save();
         }
     }

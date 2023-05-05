@@ -18,15 +18,51 @@
           <p class="text-muted text-secondary m-0">{{ $post->slug }}</p>
         </figcaption>
       </figure>
-      <p>
-        <strong>Categoria: </strong>
-        <span class="badge rounded-pill"
-          style="background-color: {{ $post->category?->color }}">{{ $post->category?->label }}</span>
-      </p>
-      <p>
-        <strong>Contenuto: </strong>
-        {{ $post->text }}
-      </p>
+      <div class="row">
+        <div class="col-3">
+          <p>
+            <strong>Categoria:</strong>
+            <br>
+
+            @if ($post->category)
+              {!! $post->category->getBadgeHTML() !!}
+            @else
+              Non categorizzato
+            @endif
+          </p>
+        </div>
+        <div class="col-3">
+          <p>
+            <strong>Tags:</strong>
+            <br>
+            @forelse ($post->tags as $tag)
+              {!! $tag->getBadgeHTML() !!}
+            @empty
+              Nessun tag associato
+            @endforelse
+          </p>
+        </div>
+        <div class="col-3">
+          <p>
+            <strong>Ultima modifica:</strong>
+            <br>
+            {{ $post->updated_at }}
+          </p>
+        </div>
+        <div class="col-3">
+          <p>
+            <strong>Creato il:</strong>
+            <br>
+            {{ $post->created_at }}
+          </p>
+        </div>
+        <div class="col-12">
+          <p>
+            <strong>Contenuto: </strong>
+            {{ $post->text }}
+          </p>
+        </div>
+      </div>
     </div>
   </section>
 @endsection

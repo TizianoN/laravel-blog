@@ -14,7 +14,7 @@
     <div class="card-body">
       <p>
         <strong>Categoria: </strong>
-        <span class="badge rounded-pill" style="background-color: {{ $category->color }}">{{ $category->label }}</span>
+        {!! $category?->getBadgeHTML() !!}
       </p>
     </div>
   </section>

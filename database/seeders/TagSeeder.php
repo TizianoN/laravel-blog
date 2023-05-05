@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use App\Models\Category;
+use App\Models\Tag;
 use Faker\Generator as Faker;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
-class CategorySeeder extends Seeder
+class TagSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -16,10 +16,10 @@ class CategorySeeder extends Seeder
      */
     public function run(Faker $faker)
     {
-        $labels = ["Bootstrap", "Tailwind", "Vue", "Laravel", "PHPMyAdmin"];
+        $labels = ["HTML", "CSS", "SQL", "JavaScript", "PHP", "GIT", "Blade"];
 
         foreach($labels as $label) {
-            $category = new Category();
+            $category = new Tag();
             $category->label = $label;
             $category->color = $faker->hexColor();;
             $category->save();

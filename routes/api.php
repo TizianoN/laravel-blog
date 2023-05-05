@@ -2,6 +2,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\PostController;
+use App\Http\Controllers\Api\CommentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,6 +16,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+Route::apiResource('posts', PostController::class)->except('store', 'update', 'destroy');
+Route::get('/category/{category_id}/posts', [PostController::class, 'getPostsByCategory']);
+
+Route::get('post/{post_id}/comments', [CommentController::class, 'getCommentsByPost']);
+Route::post('comments', [CommentController::class, 'store']);

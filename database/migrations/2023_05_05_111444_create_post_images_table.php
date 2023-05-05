@@ -13,12 +13,17 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('posts', function (Blueprint $table) {
-            $table->foreignId('category_id')
-                ->after('id')
-                ->nullable()
+        Schema::create('post_images', function (Blueprint $table) {
+            $table->id();
+
+            $table->foreignId('post_id')
                 ->constrained()
-                ->nullOnDelete();
+                ->cascadeOnDelete();
+                
+            $table->string('title');
+            $table->string('image')->nullable();
+            $table->text('content');
+            $table->timestamps();
         });
     }
 
@@ -29,9 +34,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('posts', function (Blueprint $table) {
-            $table->dropForeign('posts_category_id_foreign');
-            $table->dropColumn('category_id');
-        });
+        Schema::dropIfExists('post_images');
     }
 };
